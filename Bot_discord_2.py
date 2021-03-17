@@ -8,7 +8,7 @@ from urllib.parse import parse_qs, urlparse
 import re
 import random
 
-youtube = googleapiclient.discovery.build("youtube", "v3", developerKey = "AIzaSyBmKsIDt9fWhylYo9bSkd1dZyV5Oxgo3KU")
+youtube = googleapiclient.discovery.build("youtube", "v3", developerKey = "Insert youtube dev key")
 
 classic_roll_pattern = re.compile(r"(\d*)d(\d*)")
 success_roll_pattern= re.compile(r"(>(\d*)|<(\d*))")
@@ -313,4 +313,4 @@ async def clear(ctx):
     for song in os.listdir(str(ctx.guild)):
         os.remove("D:/Cours/Coding/Python/Bot Discord/"+str(ctx.guild) + "/"+song)
 
-client.run("NzgyOTc2ODc3ODQwMTcxMDI4.X8UCCg.xELFfKaDOsYcCiYJTBnHmSfQris")
+client.run("Insert discord token")
