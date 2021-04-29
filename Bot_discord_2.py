@@ -8,7 +8,7 @@ from urllib.parse import parse_qs, urlparse
 import re
 import random
 
-youtube = googleapiclient.discovery.build("youtube", "v3", developerKey = "Insert youtube dev key")
+youtube = googleapiclient.discovery.build("youtube", "v3", developerKey = "Import youtube token")
 
 classic_roll_pattern = re.compile(r"(\d*)d(\d*)")
 success_roll_pattern= re.compile(r"(>(\d*)|<(\d*))")
@@ -16,8 +16,13 @@ add_minus_roll_pattern = re.compile(r"((\+)\d|(\-)\d)")
 adv_disadv_pattern = re.compile(r"(adv|disadv)")
 explosive_pattern = re.compile("exp")
 add_pattern = re.compile("add")
-duration_pattern= re.compile(r"[0-9]+")
+hour_pattern= re.compile(r"[1-9]+H")
+minute_pattern= re.compile(r"[1-9]+M")
+second_pattern = re.compile(r"[1-9]+S")
+
 playlist_pattern = re.compile(r"playlist")
+
+server_queues = {}
 
 def roll_the_dice(user_input):
 
@@ -48,7 +53,6 @@ def roll_the_dice(user_input):
             crit(dice_rolled,dice_size)
 
     def exploding_dice(dice,dice_size):
-
         if dice <= 1:
             dice_rolled = roll(dice_size)
             list_new_dice_roll.append(dice_rolled)
@@ -66,76 +70,72 @@ def roll_the_dice(user_input):
     explosive_roll = re.search(explosive_pattern,user_input)
     add_roll = re.search(add_pattern, user_input)
 
-    if classic_roll:
 
-        while counter <= int(classic_roll.group(1)):
-            dice_roll = roll(int(classic_roll.group(2)))
-            counter +=1
+    while counter <= int(classic_roll.group(1)):
+        dice_roll = roll(int(classic_roll.group(2)))
+        counter +=1
 
-            if explosive_roll:
-                if dice_roll == int(classic_roll.group(2)) or dice_roll <= 1:
-                    exploding_dice(dice_roll,int(classic_roll.group(2)))
+        if explosive_roll:
+            if dice_roll == int(classic_roll.group(2)) or dice_roll <= 1:
+                exploding_dice(dice_roll,int(classic_roll.group(2)))
 
-            if adv_disadv_roll:
-                dice_roll = [dice_roll, roll(int(classic_roll.group(2)))]
-            
-            if add_minus_roll:
-                if add_minus_roll.group(1)[0] == "+":
-                    dice_roll += int(add_minus_roll.group(1)[1:])
-                    if adv_disadv_roll:
-                        dice_roll[0] += int(add_minus_roll.group(1)[1:])
-                        dice_roll[1] += int(add_minus_roll.group(1)[1:])
-
-                if add_minus_roll.group(1)[0] == "-":
-                    dice_roll -= int(add_minus_roll.group(1)[1:])
-                    if adv_disadv_roll:
-                        dice_roll[0] -= int(add_minus_roll.group(1)[1:])
-                        if dice_roll[1]:
-                            dice_roll[1] -= int(add_minus_roll.group(1)[1:])
-
-            if success_roll:
-                if dice_roll >= int(success_roll.group(2)):
-                    if adv_disadv_roll:
-                        if adv_disadv_roll.group(1) == "adv":
-                            if min(dice_roll) >= int(success_roll.group(2)):
-                                success += 1
-                    success += 1
-                if dice_roll == 1:
-                    if adv_disadv_roll:
-                        if adv_disadv_roll.group(1) == "adv":
-                            if min(dice_roll) == 1:
-                                success -= 1
-                    success -= 1
-
-            list_dice_roll.append(dice_roll)
-
-            if add_roll:
-                dice_sum += dice_roll
-        
-        for dice in list_new_dice_roll:
-            list_dice_roll.append(dice)
-
-        reponse = ("T'as fait {}".format(list_dice_roll))
         if adv_disadv_roll:
-            reponse = re.sub("[[]","(", str(list_dice_roll))
-            reponse = re.sub("[]]",")", reponse)
-            reponse = re.sub("^\(","**[**", reponse)
-            reponse = re.sub("\)$","**]**", reponse)
-        if success_roll:
-            reponse = ("{}\n{} succès".format(list_dice_roll,success))
+            dice_roll = [dice_roll, roll(int(classic_roll.group(2)))]
         
+        if add_minus_roll:
+            if add_minus_roll.group(1)[0] == "+":
+                dice_roll += int(add_minus_roll.group(1)[1:])
+                if adv_disadv_roll:
+                    dice_roll[0] += int(add_minus_roll.group(1)[1:])
+                    dice_roll[1] += int(add_minus_roll.group(1)[1:])
+
+            if add_minus_roll.group(1)[0] == "-":
+                dice_roll -= int(add_minus_roll.group(1)[1:])
+                if adv_disadv_roll:
+                    dice_roll[0] -= int(add_minus_roll.group(1)[1:])
+                    if dice_roll[1]:
+                        dice_roll[1] -= int(add_minus_roll.group(1)[1:])
+
+        if success_roll:
+            if dice_roll >= int(success_roll.group(2)):
+                if adv_disadv_roll:
+                    if adv_disadv_roll.group(1) == "adv":
+                        print("adv")
+                        if min(dice_roll) >= int(success_roll.group(2)):
+                            print(min(dice_roll))
+                            success += 1
+                success += 1
+            if dice_roll == 1:
+                if adv_disadv_roll:
+                    if adv_disadv_roll.group(1) == "adv":
+                        print("adv")
+                        if min(dice_roll) == 1:
+                            print(min(dice_roll))
+                            success -= 1
+                success -= 1
+
+        list_dice_roll.append(dice_roll)
+
         if add_roll:
-            reponse = ("{}\n T'as fait {}".format(list_dice_roll,dice_sum))
+            dice_sum += dice_roll
+    
+    for dice in list_new_dice_roll:
+        list_dice_roll.append(dice)
 
-        return reponse
-    else:
-        reponse = "T'as fait une erreur poto"
-        return reponse
+    reponse = str((list_dice_roll))
 
-def download_song(server,url):
+    if success_roll:
+        reponse = ("{} succès".format(success))
+    
+    if add_roll:
+        reponse = ("T'as fait {} frérot".format(dice_sum))
+    
+    return str(list_dice_roll),str(reponse)
+
+def download_song(url,vid_id):
     ydl_opts = {
             "format":"bestaudio/best",
-            'outtmpl': 'D:/Cours/Coding/Python/Bot Discord/'+str(server)+'/'+'%(title)s.%(ext)s',
+            'outtmpl': 'D:/Cours/Coding/Python/Bot Discord/music_database/'+vid_id+'.%(ext)s',
             "postprocessors":[{
                 "key":"FFmpegExtractAudio",
                 "preferredcodec":"mp3",
@@ -153,42 +153,41 @@ def video_info(url):
             id=url
         )
     response = request.execute()
+
     try:
         duration = response["items"][0]["contentDetails"]["duration"]
+
     except IndexError:
-        print("Erreur")
+        print("Impossible de trouver la durée")
         return
 
     title = response["items"][0]["snippet"]["title"]
 
-    match_duration = re.findall(duration_pattern,duration)
-
-    video_duration =[]
-    for match in match_duration:
-        video_duration.append(match)
-
-    video_duration = list(reversed(video_duration))
-
-    if video_duration[0]:
-            if video_duration[1] or video_duration[2]:
-                seconds = "et " + str(video_duration[0]) + " seconde(s)"
-            else:
-                seconds = str(video_duration[0]) + "seconde(s)"
-    try :
-        minutes = str(video_duration[1]) + " minute(s) "
-    except IndexError:
-        minutes = "0"
-    try :
-        hours = str(video_duration[2]) + " heure(s) "
-    except IndexError:
-        hours = "0"
+    match_hour = re.findall(hour_pattern,duration)
+    match_minute = re.findall(minute_pattern,duration)
+    match_second = re.findall(second_pattern,duration)
     
-    response_1 = ("Le titre est ",title)
-    response_2 = ("La vidéo fait {}{}{}.\n".format(hours,minutes,seconds))
+    if match_hour:
+        hours = str(match_hour[0].replace("H","")) + " heure(s)"
+    else :
+        hours = ""
+    
+    if match_minute:
+        minutes = str(match_minute[0].replace("M","")) + " minute(s)"
+    else :
+        minutes = ""
 
-    return response_1,response_2
+    if match_second:
+        if match_hour or match_minute:
+            seconds = " et " + str(match_second[0].replace("S","")) + " seconde(s)"
+        else:
+            seconds = str(match_second[0].replace("S","")) + " seconde(s)"
+    else :
+        seconds = ""
+    duration = ("La vidéo fait {}{}{}.".format(hours,minutes,seconds))
+    return title,duration
 
-def get_videos_from_playlist(url):
+def get_videos_from_playlist(url,queue):
     query = parse_qs(urlparse(url).query, keep_blank_values=True)
     playlist_id = query["list"][0]
 
@@ -208,66 +207,92 @@ def get_videos_from_playlist(url):
         request = youtube.playlistItems().list_next(request, response)
 
     for video in playlist_items:
-        print(video["snippet"]["resourceId"]["videoId"])
-        video_info(video["snippet"]["resourceId"]["videoId"])
+        vid_id = video["snippet"]["resourceId"]["videoId"]
+        try:
+            vid_title, vid_duration = video_info(video["snippet"]["resourceId"]["videoId"])
+        except TypeError:
+            vid_title,vid_duration = None,None
+        queue.append([vid_id,vid_title,vid_duration])
+    return queue
 
-def extract_video_id(url):
+def extract_video_id(url,queue):
     query = urlparse(url)
-    if query.hostname == 'youtu.be': return query.path[1:]
+    if query.hostname == 'youtu.be': 
+        vid_id = query.path[1:]
+        vid_title, vid_duration = video_info(query.path[1:])
     if query.hostname in {'www.youtube.com', 'youtube.com'}:
-        if query.path == '/watch': return parse_qs(query.query)['v'][0]
-        if query.path[:7] == '/embed/': return query.path.split('/')[2]
-        if query.path[:3] == '/v/': return query.path.split('/')[2]
-    return None
+        if query.path == '/watch': 
+            vid_id = parse_qs(query.query)['v'][0]
+            vid_title, vid_duration = video_info(parse_qs(query.query)['v'][0])
+        if query.path[:7] == '/embed/': 
+            vid_id = query.path.split('/')[2]
+            vid_title, vid_duration =video_info(query.path.split('/')[2])
+        if query.path[:3] == '/v/': 
+            vid_id = query.path.split('/')[2]
+            vid_title, vid_duration = video_info(query.path.split('/')[2])
+    queue.append([vid_id,vid_title,vid_duration])
+    return queue
+
 
 path = os.getcwd()
 print ("The current working directory is %s" % path)
-client = commands.Bot(command_prefix = "!")
+client = commands.Bot(command_prefix = "?")
 
 @client.command()
 async def hello(ctx):
     await ctx.send('hi')
 
 @client.command()
-async def roll(ctx,roll):
-    await ctx.send(roll_the_dice(roll))
+async def roll(ctx,*,roll):
+    response1,response2 = roll_the_dice(roll)
+    await ctx.send(response1)
+    if not response1 == response2:
+        await ctx.send(response2)
 
 @client.command()
 async def play(ctx, url : str):
-
-    if not os.path.exists(str(ctx.guild)):
-        os.mkdir(str(ctx.guild))
-    
     channel = ctx.author.voice.channel
-    song_queue = []
+    
+    try:
+        print(server_queues[str(ctx.guild)])
+    except:
+        server_queues[str(ctx.guild)] = []
 
     if not discord.utils.get(client.voice_clients,guild = ctx.guild):
         await channel.connect()
-        voice = discord.utils.get(client.voice_clients,guild = ctx.guild)
 
-    download_song(ctx.guild,url)
+    voice = discord.utils.get(client.voice_clients,guild = ctx.guild)
 
-    #if re.search(playlist_pattern,url):
-    #    await ctx.send(get_videos_from_playlist(url))
-    #else:
-    #    await ctx.send(video_info(extract_video_id(url)))
+    match_playlist = re.search(playlist_pattern,url)
 
-    for file in os.listdir(str(ctx.guild)):
-        if file.endswith('.mp3'):
-            song_queue.append(file)
+    if match_playlist:
+        server_queues[str(ctx.guild)] = get_videos_from_playlist(url,server_queues[str(ctx.guild)])
+    else:
+        server_queues[str(ctx.guild)] = extract_video_id(url,server_queues[str(ctx.guild)])
+
+    end_queue = True
 
     place_in_queue = 0
 
-    while song_queue:
+    while end_queue:
         try:
-            voice.play(discord.FFmpegPCMAudio("D:/Cours/Coding/Python/Bot Discord/"+str(ctx.guild) + "/"+song_queue[place_in_queue]))
+            if server_queues[str(ctx.guild)][place_in_queue][0]+".mp3" not in os.listdir('D:/Cours/Coding/Python/Bot Discord/music_database/'):
+                download_song("https://youtu.be/"+server_queues[str(ctx.guild)][place_in_queue][0],server_queues[str(ctx.guild)][place_in_queue][0])
+
             while voice.is_playing() or voice.is_paused():
                 await asyncio.sleep(1)
-            os.remove("D:/Cours/Coding/Python/Bot Discord/"+str(ctx.guild) + "/"+song_queue[place_in_queue])
+            voice.play(discord.FFmpegPCMAudio("D:/Cours/Coding/Python/Bot Discord/music_database/"+server_queues[str(ctx.guild)][place_in_queue][0]+".mp3"))
+            await ctx.send(server_queues[str(ctx.guild)][place_in_queue][1])
+            await ctx.send(server_queues[str(ctx.guild)][place_in_queue][2])
+
+            if place_in_queue+1 == len(server_queues[str(ctx.guild)]):
+                end_queue = False
+            
+            server_queues[str(ctx.guild)].pop(place_in_queue)
             place_in_queue += 1
         except IndexError:
             break
-        
+
 @client.command()
 async def leave(ctx):
     try:
@@ -302,15 +327,7 @@ async def skip(ctx):
     try:
         voice = discord.utils.get(client.voice_clients, guild = ctx.guild)
         voice.stop()
-        print("skip")
     except AttributeError:
         await ctx.send("Pas de musique a reprendre ou pas en pause de base")
 
-@client.command()
-async def clear(ctx):
-    voice = discord.utils.get(client.voice_clients, guild = ctx.guild)
-    voice.stop()
-    for song in os.listdir(str(ctx.guild)):
-        os.remove("D:/Cours/Coding/Python/Bot Discord/"+str(ctx.guild) + "/"+song)
-
-client.run("Insert discord token")
+client.run("Import discord token")
